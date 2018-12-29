@@ -1,5 +1,5 @@
 # zlibisc
-Leveraging code from other languages: zlib
+Leveraging code from other languages for InterSystems platforms.
 
 # Intro
 
