@@ -162,7 +162,7 @@ ZFEND
 
 To run it place `dll` or `so` files from [releases page](https://github.com/intersystems-ru/zlibisc/releases) into `<instance>/bin` folder. Repository also contains build scripts for Windows and Linux, execute them to build your own version.
 Linux prerequisites: `apt install build-essential zlib1g zlib1g-devel`
-Windows prerequisites: [WinBuilds](http://win-builds.org/doku.php)
+Windows prerequisites: [WinBuilds](http://win-builds.org/doku.php) - comes with zlib.
 
 To interact with callout library execute:
 ```
