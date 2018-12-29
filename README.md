@@ -56,15 +56,15 @@ We're running on port 3000, reading input string from request and returning comp
 /// do ##class(isc.zlib.Test).node()
 ClassMethod node(text As %String = "Hello World", Output response As %String) As %Status
 {
-  kill response
-  set req = ##class(%Net.HttpRequest).%New()
-  set req.Server = "localhost"
-  set req.Port = 3000
-  set req.Location = "/zlibapi/" _ text
-  set sc = req.Get(,,$$$NO)
-  quit:$$$ISERR(sc) sc
-  set response = req.HttpResponse.Data.Read($$$MaxStringLength)
-  quit sc
+    kill response
+    set req = ##class(%Net.HttpRequest).%New()
+    set req.Server = "localhost"
+    set req.Port = 3000
+    set req.Location = "/zlibapi/" _ text
+    set sc = req.Get(,,$$$NO)
+    quit:$$$ISERR(sc) sc
+    set response = req.HttpResponse.Data.Read($$$MaxStringLength)
+    quit sc
 }
 ```
 
