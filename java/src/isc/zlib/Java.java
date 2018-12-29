@@ -6,7 +6,7 @@ import java.util.zip.Deflater;
 public abstract class Java {
 
     public static byte[] compress(String inputString) {
-        byte[] output = new byte[100];
+        byte[] output = new byte[inputString.length()*3];
         try {
             // Encode a String into bytes
             byte[] input = inputString.getBytes("UTF-8");
