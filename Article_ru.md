@@ -2,11 +2,11 @@
 
 # Введение
 
-Платформа InterSystems IRIS предоставляет ряд возможностей по работе с кодом, написаном на ряде популярных языков, таких как Java, C, NodeJS, C#, Python. Недавно я прочитал [эту статью](https://community.intersystems.com/post/story-support-how-quest-raw-deflate-compressiondecompression-function-leads-node-callout-server). Речь там идет о вызове функции DELFATE из [библиотеки zlib](https://zlib.net/). В этой статье я продемонстрирую несколько различных подходов к вызовам библиотек, мы реализуем одну и ту же функциональность (функцию сжатия) на нескольких разных языках и сравним их.
+Платформа InterSystems IRIS предоставляет ряд возможностей по работе с кодом, написанном на ряде популярных языков, таких как Java, C, NodeJS (по HTTP), C#, Python. Недавно я прочитал [эту статью](https://community.intersystems.com/post/story-support-how-quest-raw-deflate-compressiondecompression-function-leads-node-callout-server). Речь там идет о вызове функции DELFATE из [библиотеки zlib](https://zlib.net/). В этой статье я продемонстрирую несколько различных подходов к вызовам библиотек, мы реализуем одну и ту же функциональность (функцию сжатия) на нескольких разных языках и сравним их.
 
 # NodeJS
 
-Начнем с NodeJS. Я беру код почти целиком из статьи Бернда, за исключением того, что в нем не используются файлы, а прямое http-соединение для передачи данных. Для промышленного использования лучше передавать данные в тела запроса, и кодировать какзапрос так и ответ в виде base64. Тем не менее, вот [код](https://github.com/intersystems-ru/zlibisc/blob/master/node/zlibserver.js):
+Начнем с NodeJS. Я беру код почти целиком из статьи Бернда, за исключением того, что в нем не используются файлы, а прямое http-соединение для передачи данных. Для промышленного использования лучше передавать данные в тела запроса, и кодировать как запрос так и ответ в виде base64. Тем не менее, вот [код](https://github.com/intersystems-ru/zlibisc/blob/master/node/zlibserver.js):
 
 ```
 //zlibserver.js
@@ -41,7 +41,7 @@ app.listen(3000, function(){
 });
 ```
 
-Чтобы запустить его выполнение в терминале ОС (должны быть установлены `node` и `npm`):
+Чтобы запустить сервер, выполните в терминале ОС (должны быть установлены `node` и `npm`):
 
 ```
 cd <repo>\node
@@ -49,7 +49,7 @@ npm install
 node  ./zlibserver.js
 ```
 
-Слушаем порт `3000`, читаем входную строку из запроса и возвращаем сжатые данные в ответ, как есть. На стороне InterSystems IRIS используется [http request](https://irisdocs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=GNET_http) для взаимодействия с данным API:
+Слушаем порт `3000`, читаем входную строку из запроса и возвращаем сжатые данные в ответ, как есть. На стороне InterSystems IRIS используется [http запрос](https://irisdocs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=GNET_http) для взаимодействия с данным API:
 
 ```
 /// NodeJS implementation
@@ -125,7 +125,7 @@ set response = ##class(isc.zlib.Java).compress(gateway, text)
 
 # C
 
-Библиотека InterSystems [Callout](https://irisdocs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=BGCL_library) это динамическая библиотека, содержащая функции которые вы можете вызвать из InterSystems IRIS.
+Библиотека InterSystems [Callout](https://irisdocs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=BGCL_library) это динамическая библиотека, содержащая функции, которые вы можете вызвать из InterSystems IRIS.
 
 Вот наша библиотека Callout:
 
@@ -186,7 +186,7 @@ zlib.compress(b'')
 
 # .Net
 
-Реализация на .Net также возвращает поток а не строку:
+Реализация на .Net также возвращает поток, а не строку:
 
 ```
 using System;
@@ -234,11 +234,11 @@ set response = ##class(isc.zlib.Net).compress(gateway, text)
 
 Несколько неожиданно в статье о механизмах вызова кода на других языках, но в InterSystems IRIS также есть встроенная функция [Compress](https://docs.intersystems.com/latest/csp/documatic/%25CSP.Documatic.cls?PAGE=CLASS&LIBRARY=%25SYS&CLASSNAME=%25SYSTEM.Util#METHOD_Compress) (и парная функция Decompress). Вызывается так: `set response = $extract($SYSTEM.Util.Compress(text), 2, *-1)`
 
-Помните, что поиск в документации или создние вопросов на [Developers Community](https://community.intersystems.com/) может сэкономить вам некоторое время.
+Помните, что поиск в документации или создание вопросов на [Developers Community](https://community.intersystems.com/) может сэкономить вам некоторое время.
 
 # Сравнение
 
-Я запустил простой тест (1Kb text, 1 000 000 итераций) на Linux и Windows and и получил следующие результаты.
+Я запустил простой тест (1Kb text, 1 000 000 итераций) на Linux и Windows и получил следующие результаты.
 
  Windows: 
 
@@ -261,7 +261,7 @@ Linux:
 
 # Заключение
 
-С платформой InterSystems IRIS вы легко можете использовать существующий код на других языках. Однако выбор правильной реализации не всегда прост, необходимо учитывать несколько метрик, таких как скорость разработки, производительность и простота сопровождения. Вам необходимо работать на разных операционных системах? Ответы на эти вопросы момогут вам определиться с оптимальным планом внедрения.
+С платформой InterSystems IRIS вы легко можете использовать существующий код на других языках. Однако выбор реализации не всегда прост: необходимо учитывать несколько метрик, таких как скорость разработки, производительность и простота сопровождения. Вам необходимо работать на разных операционных системах? Ответы на эти вопросы момогут вам определиться с оптимальным планом разработки.
 
 # Ссылки
 
