@@ -40,6 +40,24 @@ ClassMethod callout6(text = "Hello World", rounds As %Integer = 10000)
 	}
 }
 
+/// Python 
+/// do ##class(isc.zlib.Test).pythonInit()
+ClassMethod pythonInit()
+{
+	set sc = ##class(isc.py.Callout).SimpleString("import zlib")
+}
+
+/// Python deflate
+/// do ##class(isc.zlib.Test).python()
+ClassMethod python(text = "Hello World", rounds As %Integer = 10000)
+{
+	for i=1:1:rounds{
+		kill out
+		set out = ##class(isc.py.Callout).SimpleString("x = zlib.compress(b'" _ text _ "')", "x")
+		set out = $zcvt($e(out, 3, *-1), "I", "JSON")
+	}
+}
+
 /// Java GateWay implementation
 /// do ##class(isc.zlib.Test).jgw()
 ClassMethod jgw(text = "Hello World", rounds As %Integer = 10000)
@@ -48,6 +66,17 @@ ClassMethod jgw(text = "Hello World", rounds As %Integer = 10000)
 	for i=1:1:rounds{
 		kill out
 		set out = ##class(isc.zlib.Java).compress(gateway, text)
+	}
+}
+
+/// .Net GateWay implementation
+/// w ##class(isc.zlib.Test).net()
+ClassMethod net(text = "Hello World", rounds As %Integer = 10000)
+{
+	set gateway = ##class(isc.zlib.Utils).connect(##class(isc.zlib.Utils).#GATEWAYNET, ##class(isc.zlib.Utils).#CLASSPATHNET)
+	for i=1:1:rounds{
+		kill out
+		set out = ##class(isc.zlib.Net).compress(gateway, text)
 	}
 }
 
@@ -80,7 +109,7 @@ ClassMethod node(text = "Hello World", rounds As %Integer = 10000)
 /// textLength - either text, or a number of symbols in text
 /// rounds - number of calls to zlib
 /// do ##class(isc.zlib.Test).test()
-ClassMethod test(textLength As %Integer = 100, rounds As %Integer = 10000)
+ClassMethod test(textLength As %Integer = 1000, rounds As %Integer = 1000000)
 {
 	set:textLength="" textLength = 100
 
@@ -92,11 +121,12 @@ ClassMethod test(textLength As %Integer = 100, rounds As %Integer = 10000)
 	}
 	
 	do ..callout6Init()
+	do ..pythonInit()
 	
 	write "Text: ", text, !
 	write "Text length: ", $l(text), !
 	write "Rounds: ", rounds, !
-	for method="callout3", "callout6", "system", "jgw", "node" {
+	for method= "callout3", "callout6", "system", "jgw", "node", "python", "net" {
 		set start = $zh
 		do $classmethod(,method, text, rounds)
 		set end = $zh
@@ -107,6 +137,7 @@ ClassMethod test(textLength As %Integer = 100, rounds As %Integer = 10000)
 		write "Time: ", time, !
 		write "Speed (Kb/sec): ", $normalize(textLength*rounds/1024/time, 0), !
 		write "Speed (calls/sec): ", $normalize(rounds/time, 0), !
+		write "_______", !
 	}
 }
 

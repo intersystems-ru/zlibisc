@@ -5,7 +5,11 @@ Parameter CLASS = "isc.zlib.Java";
 
 Parameter CLASSPATH = {$g(^%SYS("bindir")) _ "zlib.jar"};
 
+Parameter CLASSPATHNET = {$g(^%SYS("bindir")) _ "zlibnet.dll"};
+
 Parameter GATEWAY = "ZLIB";
+
+Parameter GATEWAYNET = "zlib";
 
 /// Create JGW. Java home must point to 1.8 jre.
 /// Write $System.Status.GetErrorText(##class(isc.zlib.Utils).createGateway())
@@ -17,6 +21,22 @@ ClassMethod createGateway(gatewayName = {..#GATEWAY}, javaHome = {$SYSTEM.Util.G
 	set sys.JavaHome = javaHome
 	set sys.ClassPath = path
 	set sys.Port = port
+	quit sys.%Save()
+}
+
+/// Create .Net Gateway. Requires .Net Framework 4.5
+/// Write $System.Status.GetErrorText(##class(isc.zlib.Utils).createNetGateway())
+ClassMethod createNetGateway(gatewayName = {..#GATEWAYNET}, path As %String = {..#CLASSPATHNET}, port As %Integer = 2086)
+{
+	set sys = ##class(%Net.Remote.ObjectGateway).%New()
+	set sys.Name = gatewayName
+	set sys.Type = 2
+	set sys.ClassPath = path
+	set sys.Port = port
+	
+	set sys.DotNetVersion = 4.5
+	set sys.Exec64 = $$$YES
+	
 	quit sys.%Save()
 }
 
