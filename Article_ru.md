@@ -1,6 +1,8 @@
+# Вызываем код на Java, C, NodeJS, C#, Python из InterSystems IRIS
+
 # Введение
 
-Кроме того, недавно я прочитал [эту статью](https://community.intersystems.com/post/story-support-how-quest-raw-deflate-compressiondecompression-function-leads-node-callout-server). Речь там идет о вызове функции DELFATE из [библиотеки zlib](https://zlib.net/). В этой статье я продемонстрирую несколько различных подходов к вызовам библиотек, мы реализуем одну и ту же функциональность (функцию сжатия) на нескольких разных языках и сравним их.
+Платформа InterSystems IRIS предоставляет ряд возможностей по работе с кодом, написаном на ряде популярных языков, таких как Java, C, NodeJS, C#, Python. Недавно я прочитал [эту статью](https://community.intersystems.com/post/story-support-how-quest-raw-deflate-compressiondecompression-function-leads-node-callout-server). Речь там идет о вызове функции DELFATE из [библиотеки zlib](https://zlib.net/). В этой статье я продемонстрирую несколько различных подходов к вызовам библиотек, мы реализуем одну и ту же функциональность (функцию сжатия) на нескольких разных языках и сравним их.
 
 # NodeJS
 
@@ -113,7 +115,7 @@ write $System.Status.GetErrorText(##class(isc.zlib.Utils).createGateway())
 write $System.Status.GetErrorText(##class(isc.zlib.Utils).updateJar())
 ```
 
-Проверьте метод `createGateway` перед запуском. Второй аргкумент `javaHome` предполагает что переменная окружения `JAVA_HOME` установлена. Если это не так, вручную передайте путь до Java 1.8 JRE. Для сжатия строки `text` выполните этот код:
+Проверьте метод `createGateway` перед запуском. Второй аргумент `javaHome` предполагает что переменная окружения `JAVA_HOME` установлена. Если это не так, вручную передайте путь до Java 1.8 JRE. Для сжатия строки `text` выполните этот код:
 
 ```
 set gateway = ##class(isc.zlib.Utils).connect()
@@ -173,7 +175,60 @@ do $ZF(-3, "")                                  //unload library
 
 # Python
 
+Используя [Python Gateway](https://habr.com/ru/company/intersystems/blog/486984/) вызовем данный код:
+
+```
+import zlib
+zlib.compress(b'')
+```
+
+Из InterSystems IRIS: `set out = ##class(isc.py.Callout).SimpleString("import zlib" _ $$$NL _ "x = zlib.compress(b'" _ text _ "')", "x")`
+
 # .Net
+
+Реализация на .Net также возвращает поток а не строку:
+
+```
+using System;
+using System.IO;
+using System.IO.Compression;
+
+namespace isc.zlib
+{
+    public class Net
+    {
+        public static byte[] compress(String str)
+        {
+            using (MemoryStream output = new MemoryStream())
+            {
+                using (DeflateStream gzip = new DeflateStream(output, CompressionMode.Compress))
+                {
+                    using (StreamWriter writer = new StreamWriter(gzip, System.Text.Encoding.UTF8))
+                    {
+                        writer.Write(str);
+                    }
+                }
+
+                return output.ToArray();
+            }
+        }
+    }
+}
+```
+
+Для запуска загрузите `zlibnet.dll` со страницы [релизов](https://github.com/intersystems-ru/zlibisc/releases) в папку `<instance>/bin`. 
+
+```
+write $System.Status.GetErrorText(##class(isc.zlib.Utils).createNetGateway())
+write $System.Status.GetErrorText(##class(isc.zlib.Utils).updateNet())
+```
+
+Для сжатия строки `text` выполните этот код:
+
+```
+set gateway = ##class(isc.zlib.Utils).connect()
+set response = ##class(isc.zlib.Net).compress(gateway, text)
+```
 
 # System (встроенная реализация)
 
@@ -187,32 +242,33 @@ do $ZF(-3, "")                                  //unload library
 
  Windows: 
 
-| Метод          |Callout| System | Java    | Node     |
-|----------------|-------|--------|---------|----------|
-| Время          | 22,77 | 33,41  | 152,73  | 622,51   |
-| Скорость (Kb/s)| 43912 | 29927  | 6547    | 1606     |
-| Разница, %     | -/-   | 46,73% | 570,75% | 2633,90% |
+| Метод          |Callout| System | Python | Java    | Node     | .Net     |
+|----------------|-------|--------|--------|---------|----------|----------|
+| Время          | 22,77 | 33,41  | 91,52  | 152,73  | 622,51   |  216,43  |
+| Скорость (Kb/s)| 43912 | 29927  | 10670  | 6547    | 1606     |  4512    |
+| Разница, %     | -/-   | 46,73  | 401,93 | 570,75  | 2633,90  |  950,5   |
 
 Linux:
 
-| Метод          |Callout| System | Java     | Node     |
-|----------------|-------|--------|----------|----------|
-| Время          |76,3541| 76,499 | 147,2436 | 953,7311 |
-| Скорость (Kb/s)|13097  | 13072  | 6791     | 1049     |
-| Разница, %     |-/-    | 0,19%  | 92,84%   | 1149,09% |
+| Метод          |Callout| System | Python | Java     | Node     |
+|----------------|-------|--------|--------|----------|----------|
+| Время          |76,3541| 76,499 | 283,84 | 147,2436 | 953,7311 |
+| Скорость (Kb/s)|13097  | 13072  | 3440   | 6791     | 1049     |
+| Разница, %     |-/-    | 0,19   | 371    | 92,84    | 1149,09% |
 
 Для запуска тестов загрузите код и вызовите: `do ##class(isc.zlib.Test).test(textLength, iterations)`
 
 
 # Заключение
 
-С платформой InterSystems IRIS вы легко можете использовать существующий код на других языках. Однако выбор правильной реализации не всегда прост, необходимо учитывать несколько метрик, таких как скорость разработки, производительность и простота сопровождения. Вам необходимо работать на разных операционных системах? Поиск ответов на эти вопросы может помочь вам определиться с оптимальным планом внедрения.
+С платформой InterSystems IRIS вы легко можете использовать существующий код на других языках. Однако выбор правильной реализации не всегда прост, необходимо учитывать несколько метрик, таких как скорость разработки, производительность и простота сопровождения. Вам необходимо работать на разных операционных системах? Ответы на эти вопросы момогут вам определиться с оптимальным планом внедрения.
 
 # Ссылки
 
-- [Repo](https://github.com/intersystems-ru/zlibisc/)
-- [Binaries](https://github.com/intersystems-ru/zlibisc/releases)
-- [Http requests](https://docs.intersystems.com/latest/csp/docbook/DocBook.UI.Page.cls?KEY=GNET_http)
-- [Java Gateway](https://docs.intersystems.com/latest/csp/docbook/DocBook.UI.Page.cls?KEY=EJVG) 
-- [Callout library](https://docs.intersystems.com/latest/csp/docbook/DocBook.UI.Page.cls?KEY=BGCL_library)
-- [Compress function](https://docs.intersystems.com/latest/csp/documatic/%25CSP.Documatic.cls?PAGE=CLASS&LIBRARY=%25SYS&CLASSNAME=%25SYSTEM.Util#METHOD_Compress)
+- [Репозиторий](https://github.com/intersystems-ru/zlibisc/)
+- [Бинарники](https://github.com/intersystems-ru/zlibisc/releases)
+- [Http запросы](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=GNET_http)
+- [Java Gateway](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=EJVG)
+- [Net Gateway](https://irisdocs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=BGNT)
+- [Библиотеки Callout](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=BGCL_library)
+- [Compress](https://docs.intersystems.com/irislatest/csp/documatic/%25CSP.Documatic.cls?PAGE=CLASS&LIBRARY=%25SYS&CLASSNAME=%25SYSTEM.Util#METHOD_Compress)
