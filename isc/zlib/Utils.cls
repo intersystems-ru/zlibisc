@@ -3,6 +3,8 @@ Class isc.zlib.Utils
 
 Parameter CLASS = "isc.zlib.Java";
 
+Parameter CLASSNET = "isc.zlib.Net";
+
 Parameter CLASSPATH = {$g(^%SYS("bindir")) _ "zlib.jar"};
 
 Parameter CLASSPATHNET = {$g(^%SYS("bindir")) _ "zlibnet.dll"};
@@ -42,23 +44,30 @@ ClassMethod createNetGateway(gatewayName = {..#GATEWAYNET}, path As %String = {.
 
 /// Load Jar from path.
 /// Write $System.Status.GetErrorText(##class(isc.zlib.Utils).updateJar())
-ClassMethod updateJar(gatewayName = {..#GATEWAY}, path As %String = {..#CLASSPATH})
+ClassMethod updateJar(gatewayName = {..#GATEWAY}, path As %String = {..#CLASSPATH}, class = {..#CLASS})
 {
-	#Dim sc As %Status = $$$OK
+	#dim sc As %Status = $$$OK
 
-	set sc = ##class(%Net.Remote.Service).StopGateway(gatewayName)
+	//set sc = ##class(%Net.Remote.Service).StopGateway(gatewayName)
 	
 	set gateway = ..connect(gatewayName, path, .sc)
 	quit:$$$ISERR(sc) sc
 	
-	set sc = gateway.%Import(..#CLASS)
+	set sc = gateway.%Import(class)
 	quit:$$$ISERR(sc) sc
-	set:'##class(%Dictionary.CompiledClass).%ExistsId(..#CLASS) sc = $$$ERROR($$$GeneralError, $$$FormatText("Class '%1' does not exist",..#CLASS))
+	set:'##class(%Dictionary.CompiledClass).%ExistsId(class) sc = $$$ERROR($$$GeneralError, $$$FormatText("Class '%1' does not exist", class))
 	quit:$$$ISERR(sc) sc
 	
 	set sc = ##class(%Net.Remote.Service).StopGateway(gatewayName)
 
 	quit sc
+}
+
+/// Load .Net DLL from path.
+/// Write $System.Status.GetErrorText(##class(isc.zlib.Utils).updateNet())
+ClassMethod updateNet(gatewayName = {..#GATEWAYNET}, path As %String = {..#CLASSPATHNET}, class = {..#CLASSNET}) [ CodeMode = expression ]
+{
+..updateJar(gatewayName, path, class)
 }
 
 /// Get JGW object
