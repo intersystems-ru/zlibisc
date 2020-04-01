@@ -242,7 +242,7 @@ set response = ##class(isc.zlib.Net).compress(gateway, text)
 
  Windows: 
 
-| Метод          |С      | ObjectScript | Python | Java    | С#     | .Net     |
+| Метод          |С      | ObjectScript | Python | Java    | NodeJS     | С#     |
 |----------------|-------|--------|--------|---------|----------|----------|
 | Время          | 22,77 | 33,41  | 91,52  | 152,73  | 622,51   |  216,43  |
 | Скорость (Kb/s)| 43912 | 29927  | 10670  | 6547    | 1606     |  4512    |
