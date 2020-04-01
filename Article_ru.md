@@ -2,11 +2,12 @@
 
 # Введение
 
-Платформа InterSystems IRIS предоставляет ряд возможностей по работе с кодом, написанном на ряде популярных языков, таких как Java, C, NodeJS (по HTTP), C#, Python. Недавно я прочитал [эту статью](https://community.intersystems.com/post/story-support-how-quest-raw-deflate-compressiondecompression-function-leads-node-callout-server). Речь там идет о вызове функции DELFATE из [библиотеки zlib](https://zlib.net/). В этой статье я продемонстрирую несколько различных подходов к вызовам библиотек и мы реализуем одну и ту же функциональность (функцию сжатия) на нескольких разных языках и сравним их.
+Одно из направлений развития платформы данных InterSystems IRIS - открытость. Открытость во взаимодействии с языками програмирования, технологиями и протоколами. Поддержка языков программирования двусторонняя - возможен как вызов кода написанного на ряде языков из InterSystems IRIS, так и предоставляется API для управления InterSystems IRIS извне. В этой статье речь пойдёт о первом варианте - вызове кода из InterSystems IRIS. Целью нашего небольшого повествования является демонстрация того как просто и удобно можно это сделать. Я не хочу сравнивать различные языки програмирования (хотя в конце есть таблица по скорости работы различных имплементаций), всё зависит от решаемых вами задач и требований предьявляемых к результату разработки. В этой статье я продемонстрирую несколько различных подходов к вызовам библиотек и мы реализуем одну и ту же функциональность - вызов функции DELFATE из [библиотеки zlib](https://zlib.net/).
 
 # NodeJS
 
-Начнем с NodeJS. Я беру код почти целиком из статьи Бернда, за исключением того, что в нем не используются файлы, а прямое http-соединение для передачи данных. Вцелом лучше передавать данные в теле запроса, и кодировать как запрос так и ответ в виде base64. Тем не менее, вот [код](https://github.com/intersystems-ru/zlibisc/blob/master/node/zlibserver.js):
+Недавно я прочитал вот [эту статью](https://community.intersystems.com/post/story-support-how-quest-raw-deflate-compressiondecompression-function-leads-node-callout-server). Речь там идет как раз о вызове функции DELFATE для платформы InterSystems IRIS и эта статья натолкнула меня на мысль описать не только вызов кода на NodeJS из InterSystems IRIS, но и вызов кода на других языках.
+Итак, начнем с NodeJS. Я беру код почти целиком из статьи Бернда, за исключением того, что в нем не используются файлы, а прямое http-соединение для передачи данных. В целом лучше передавать данные в теле запроса, и кодировать как запрос, так и ответ в виде base64. Тем не менее, вот [код](https://github.com/intersystems-ru/zlibisc/blob/master/node/zlibserver.js):
 
 ```
 //zlibserver.js
@@ -49,7 +50,7 @@ npm install
 node  ./zlibserver.js
 ```
 
-Слушаем порт `3000`, читаем входную строку из запроса и возвращаем сжатые данные в ответ. На стороне InterSystems IRIS используется [http запрос](https://irisdocs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=GNET_http) для взаимодействия с данным API:
+Что здесь происходит? Слушаем порт `3000`, сжимаем DEFLATE тело запроса и возвращаем сжатые данные в ответ. На стороне InterSystems IRIS используется [http запрос](https://irisdocs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=GNET_http) для взаимодействия с данным API:
 
 ```
 /// NodeJS implementation
@@ -107,8 +108,8 @@ public abstract class Java {
 }
 ```
 
-Единственная проблема этой имплементации заключается в том, что она возвращает массив `byte[]`, который становится потоком на стороне InterSystems IRIS. Я пытался вернуть строку, но не смог найти, как сформировать бинарную строку из `byte[]`. Если у вас есть какие-то идеи, пожалуйста, оставьте комментарий. 
-Чтобы запустить код, поместите jar из [релизов](https://github.com/intersystems-ru/zlibisc/releases) в папку `<instance>/bin`, загрузите ObjectScript-код в свой инстанс InterSystems IRIS и выполните:
+Особенность этой имплементации заключается в том, что она возвращает массив `byte[]`, который становится потоком на стороне InterSystems IRIS. Я пытался вернуть строку, но не смог найти, как сформировать бинарную строку из `byte[]`. Если у вас есть какие-то идеи, пожалуйста, оставьте комментарий. 
+Чтобы запустить код, поместите jar из [релизов](https://github.com/intersystems-ru/zlibisc/releases) в папку `<instance>/bin`, загрузите код в свой инстанс InterSystems IRIS и выполните:
 
 ```
 write $System.Status.GetErrorText(##class(isc.zlib.Utils).createGateway())
@@ -122,12 +123,11 @@ set gateway = ##class(isc.zlib.Utils).connect()
 set response = ##class(isc.zlib.Java).compress(gateway, text)
 ```
 
-
 # C
 
 Библиотека InterSystems [Callout](https://irisdocs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=BGCL_library) это динамическая библиотека, предоставляющая функции, которые вы можете вызвать из InterSystems IRIS.
 
-Вот наша библиотека Callout:
+Вот наша библиотека:
 
 ```
 #define ZF_DLL
@@ -230,19 +230,19 @@ set gateway = ##class(isc.zlib.Utils).connect()
 set response = ##class(isc.zlib.Net).compress(gateway, text)
 ```
 
-# System (встроенная реализация)
+# InterSystems ObjectScript (встроенная реализация)
 
-Несколько неожиданно в статье о механизмах вызова кода на других языках, но в InterSystems IRIS также есть встроенная функция [Compress](https://docs.intersystems.com/latest/csp/documatic/%25CSP.Documatic.cls?PAGE=CLASS&LIBRARY=%25SYS&CLASSNAME=%25SYSTEM.Util#METHOD_Compress) (и парная функция Decompress). Вызывается так: `set response = $extract($SYSTEM.Util.Compress(text), 2, *-1)`
+Несколько неожиданно в статье о механизмах вызова кода на других языках, но в ObjectScript также есть встроенная функция [Compress](https://docs.intersystems.com/latest/csp/documatic/%25CSP.Documatic.cls?PAGE=CLASS&LIBRARY=%25SYS&CLASSNAME=%25SYSTEM.Util#METHOD_Compress) (и парная функция Decompress). Вызывается так: `set response = $extract($SYSTEM.Util.Compress(text), 2, *-1)`
 
 Помните, что поиск в документации или вопрос на [Developers Community](https://community.intersystems.com/) может сэкономить вам некоторое время.
 
 # Сравнение
 
-Я запустил простой тест (1Kb text, 1 000 000 итераций) на Linux и Windows и получил следующие результаты.
+Я запустил простой тест (1Kb text, 1 000 000 итераций) на Linux (VPS) и Windows (Ноутбук) и получил следующие результаты.
 
  Windows: 
 
-| Метод          |Callout| System | Python | Java    | Node     | .Net     |
+| Метод          |С      | ObjectScript | Python | Java    | С#     | .Net     |
 |----------------|-------|--------|--------|---------|----------|----------|
 | Время          | 22,77 | 33,41  | 91,52  | 152,73  | 622,51   |  216,43  |
 | Скорость (Kb/s)| 43912 | 29927  | 10670  | 6547    | 1606     |  4512    |
@@ -250,7 +250,7 @@ set response = ##class(isc.zlib.Net).compress(gateway, text)
 
 Linux:
 
-| Метод          |Callout| System | Python | Java     | Node     |
+| Метод          |C      | ObjectScript | Python | Java     | NodeJS    |
 |----------------|-------|--------|--------|----------|----------|
 | Время          |76,3541| 76,499 | 283,84 | 147,2436 | 953,7311 |
 | Скорость (Kb/s)|13097  | 13072  | 3440   | 6791     | 1049     |
